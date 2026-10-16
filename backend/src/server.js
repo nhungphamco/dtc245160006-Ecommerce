@@ -29,11 +29,21 @@ app.get("/api/health", async (req, res) => {
 app.use("/api/products", productRoutes);
 
 app.use((err, req, res, next) => {
-    console.error("API error:", err);
+    const status = Number.isInteger(err.status) &&
+        err.status >= 400 &&
+        err.status <= 599
+        ? err.status
+        : 500;
 
-    res.status(500).json({
+    if (status >= 500) {
+        console.error("API error:", err);
+    }
+
+    res.status(status).json({
         success: false,
-        message: "Loi he thong"
+        message: status < 500
+            ? err.message
+            : "Loi he thong"
     });
 });
 
