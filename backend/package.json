@@ -1,0 +1,26 @@
+{
+  "name": "ecommerce",
+  "version": "1.0.0",
+  "description": "Backend API cho website thương mại điện tử MiniShop",
+  "main": "index.js",
+  "scripts": {
+     "start": "node src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nhungphamco/dtc245160006-Ecommerce.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nhungphamco/dtc245160006-Ecommerce/issues"
+  },
+  "homepage": "https://github.com/nhungphamco/dtc245160006-Ecommerce#readme",
+  "dependencies": {
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "mysql2": "^3.24.6"
+  }
+}

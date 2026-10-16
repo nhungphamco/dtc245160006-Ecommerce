@@ -1,17 +1,24 @@
 services:
+  # ==========================================
+  # 1. MYSQL DATABASE
+  # ==========================================
   mysql:
     image: mysql:8.4
     restart: unless-stopped
+
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Missing root password}
       MYSQL_DATABASE: ${MYSQL_DATABASE:?Missing database}
       MYSQL_USER: ${MYSQL_USER:?Missing username}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Missing app password}
+
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
     networks:
       - db_network
+
     healthcheck:
       test:
         - CMD-SHELL
@@ -21,23 +28,67 @@ services:
       retries: 15
       start_period: 40s
 
+  # ==========================================
+  # 2. PHPMYADMIN
+  # ==========================================
   phpmyadmin:
     image: phpmyadmin:5.2
     restart: unless-stopped
+
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
+
     ports:
       - "127.0.0.1:8081:80"
+
     depends_on:
       mysql:
         condition: service_healthy
+
     networks:
       - db_network
 
+  # ==========================================
+  # 3. NODE.JS BACKEND
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE:?Missing database}
+      DB_USER: ${MYSQL_USER:?Missing username}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?Missing app password}
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:3001:3000"
+
+    networks:
+      - db_network
+
+    security_opt:
+      - no-new-privileges:true
+
+# ==========================================
+# PERSISTENT VOLUMES
+# ==========================================
 volumes:
   mysql_data:
 
+# ==========================================
+# DOCKER NETWORKS
+# ==========================================
 networks:
   db_network:
     driver: bridge
