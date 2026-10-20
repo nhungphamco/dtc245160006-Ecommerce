@@ -1,0 +1,31 @@
+services:
+  loki:
+    image: grafana/loki:3.6.7
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/loki/config.yaml
+    ports:
+      - "127.0.0.1:3100:3100"
+    networks:
+      - monitoring_network
+    volumes:
+      - type: bind
+        source: ./logging/loki.yaml
+        target: /etc/loki/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - loki_data:/loki
+    mem_limit: 256m
+    cpus: 0.50
+    pids_limit: 64
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "3m"
+        max-file: "2"
+
+volumes:
+  loki_data:

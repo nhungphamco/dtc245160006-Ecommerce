@@ -1,0 +1,42 @@
+services:
+  alloy:
+    image: grafana/alloy:v1.14.0
+    restart: unless-stopped
+    user: "0:0"
+    command:
+      - run
+      - --storage.path=/alloy-data
+      - /etc/alloy/config.alloy
+    environment:
+      GOMEMLIMIT: "160MiB"
+    networks:
+      - monitoring_network
+    volumes:
+      - type: bind
+        source: ./logging/config.alloy
+        target: /etc/alloy/config.alloy
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: false
+      - alloy_data:/alloy-data
+    mem_limit: 256m
+    cpus: 0.30
+    pids_limit: 64
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "3m"
+        max-file: "2"
+
+volumes:
+  alloy_data:

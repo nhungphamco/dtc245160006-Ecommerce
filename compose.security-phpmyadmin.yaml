@@ -1,0 +1,9 @@
+# Append after the complete verified MiniShop Compose file set.
+# Apply only to phpmyadmin after reviewing the merged configuration.
+services:
+  phpmyadmin:
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

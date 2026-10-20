@@ -30,3 +30,18 @@ mysql-data/
 grafana-data/
 prometheus-data/
 loki-data/
+# Private configuration snapshots and local review artifacts
+/docs/monitoring-backup/
+/docs/security-remediation-backups/
+/docs/evidence-review/
+
+# Backup archives and runtime collector state
+*.tar.gz
+*.tgz
+*.sql.partial
+positions.yaml
+.minishop-secrets/
+.minishop-promtail/
+
+# Unrelated coursework accidentally stored under screenshots
+/screenshots/Python/

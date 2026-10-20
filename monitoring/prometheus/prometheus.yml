@@ -1,0 +1,30 @@
+# ==============================================
+# PROMETHEUS CONFIGURATION — MiniShop Monitoring
+# ==============================================
+# Scrape interval 30s để tiết kiệm tài nguyên trên VM 1.9 GiB RAM.
+# Tất cả target đều giao tiếp qua monitoring_network (nội bộ Docker).
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  # ----- Prometheus tự giám sát -----
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ----- Node Exporter: CPU, RAM, Disk của Ubuntu host -----
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # ----- cAdvisor: Tài nguyên Docker container -----
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # ----- MySQL Exporter: Metrics MySQL -----
+  - job_name: "mysql-exporter"
+    static_configs:
+      - targets: ["mysql-exporter:9104"]

@@ -1,0 +1,10 @@
+# Append after the complete verified MiniShop Compose file set,
+# including compose.security-phpmyadmin.yaml when it is in use.
+# Preparation only: applying requires a separately approved MySQL restart.
+services:
+  mysql:
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

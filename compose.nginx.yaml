@@ -1,0 +1,42 @@
+# Explicit opt-in overlay: use together with compose.yaml, never by itself.
+# HTTP demo for the confirmed VMware LAN address; .env is not modified.
+services:
+  backend:
+    environment:
+      APP_ORIGIN: http://192.168.197.135
+      TRUST_PROXY: "1"
+    networks:
+      - app_network
+
+  nginx:
+    image: minishop-frontend:nginx-v1
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "192.168.197.135:80:8080"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - app_network
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    cpus: 0.50
+    pids_limit: 64
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+networks:
+  app_network:
+    driver: bridge

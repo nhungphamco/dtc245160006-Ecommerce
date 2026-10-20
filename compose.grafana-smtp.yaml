@@ -1,0 +1,18 @@
+services:
+  grafana:
+    environment:
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: ${GF_SMTP_HOST:?Missing SMTP host}
+      GF_SMTP_USER: ${GF_SMTP_USER:?Missing SMTP user}
+      GF_SMTP_PASSWORD__FILE: "/run/secrets/grafana-smtp-password"
+      GF_SMTP_FROM_ADDRESS: ${GF_SMTP_FROM_ADDRESS:?Missing SMTP sender}
+      GF_SMTP_FROM_NAME: "MiniShop Monitoring"
+      GF_SMTP_STARTTLS_POLICY: "MandatoryStartTLS"
+      GF_SMTP_SKIP_VERIFY: "false"
+    volumes:
+      - type: bind
+        source: /home/minishop/.minishop-secrets/grafana-smtp-password
+        target: /run/secrets/grafana-smtp-password
+        read_only: true
+        bind:
+          create_host_path: false

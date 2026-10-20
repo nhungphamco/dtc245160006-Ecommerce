@@ -66,6 +66,8 @@ services:
       DB_NAME: ${MYSQL_DATABASE:?Missing database}
       DB_USER: ${MYSQL_USER:?Missing username}
       DB_PASSWORD: ${MYSQL_PASSWORD:?Missing app password}
+      APP_ORIGIN: ${APP_ORIGIN:?Missing allowed frontend origin}
+      AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-}
 
     depends_on:
       mysql:

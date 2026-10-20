@@ -1,0 +1,15 @@
+# ================================================
+# GRAFANA DATASOURCE — Auto-provision Prometheus
+# ================================================
+# Grafana tự động kết nối Prometheus khi khởi động,
+# không cần cấu hình thủ công qua UI.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

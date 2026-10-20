@@ -1,0 +1,54 @@
+# Lab-only migration draft: Promtail is EOL. Prepared to meet the course rubric.
+# Append AFTER the entire verified 14-file configuration. Do not run up globally.
+# Validate on the amd64 Ubuntu host and seed positions before starting Promtail.
+services:
+  alloy:
+    profiles:
+      - alloy-rollback
+
+  promtail:
+    image: grafana/promtail:3.6.7@sha256:d5c160912b35cd658b82bff2d06554e38f868fd46141562b9b4da7a7408cc179
+    platform: linux/amd64
+    restart: unless-stopped
+    user: "0:0"
+    command:
+      - -config.file=/etc/promtail/config.yaml
+    environment:
+      GOMEMLIMIT: "160MiB"
+    networks:
+      - monitoring_network
+    volumes:
+      - type: bind
+        source: ./logging/promtail.yaml
+        target: /etc/promtail/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: /home/minishop/.minishop-promtail
+        target: /var/lib/promtail
+        bind:
+          create_host_path: false
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    memswap_limit: 512m
+    cpus: 0.30
+    pids_limit: 64
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "3m"
+        max-file: "2"
