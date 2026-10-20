@@ -1,0 +1,21 @@
+# Context is the repository root; send only explicitly needed web files.
+**
+!frontend/
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/index.html
+!frontend/vite.config.js
+!frontend/src/
+!frontend/src/**
+!frontend/public/
+!frontend/public/**
+!nginx/
+!nginx/nginx.conf
+# Never include credentials, including any accidentally placed under assets.
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/node_modules
+**/.git
+**/dist

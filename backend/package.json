@@ -4,7 +4,8 @@
   "description": "Backend API cho website thương mại điện tử MiniShop",
   "main": "index.js",
   "scripts": {
-     "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node --test"
   },
   "repository": {
     "type": "git",
@@ -19,7 +20,9 @@
   },
   "homepage": "https://github.com/nhungphamco/dtc245160006-Ecommerce#readme",
   "dependencies": {
+    "argon2": "^0.45.1",
     "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
     "helmet": "^8.3.0",
     "mysql2": "^3.24.6"
   }

@@ -4,7 +4,7 @@ async function findAll({ search, sort, limit, offset }) {
     let sql = `
         SELECT id, name, description, price, stock, image_url
         FROM products
-        WHERE name LIKE ?
+        WHERE is_active = TRUE AND name LIKE ?
     `;
 
     const searchValue = `%${search}%`;
@@ -24,7 +24,7 @@ async function findAll({ search, sort, limit, offset }) {
     );
 
     const [[{ total }]] = await pool.execute(
-        "SELECT COUNT(*) AS total FROM products WHERE name LIKE ?",
+        "SELECT COUNT(*) AS total FROM products WHERE is_active = TRUE AND name LIKE ?",
         [searchValue]
     );
 
@@ -35,7 +35,7 @@ async function findById(id) {
     const [rows] = await pool.execute(
         `SELECT id, name, description, price, stock, image_url
          FROM products
-         WHERE id = ?`,
+         WHERE id = ? AND is_active = TRUE`,
         [id]
     );
 
