@@ -1,42 +1,54 @@
-# Explicit opt-in overlay: use together with compose.yaml, never by itself.
-# HTTP demo for the confirmed VMware LAN address; .env is not modified.
+# Website and Nginx metrics overlay. Keep any current image override LAST.
+
 services:
   backend:
     environment:
-      APP_ORIGIN: http://192.168.197.135
+      APP_ORIGIN: "http://192.168.197.135"
       TRUST_PROXY: "1"
     networks:
-      - app_network
-
+      app_network: null
   nginx:
-    image: minishop-frontend:nginx-v1
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    restart: unless-stopped
-    ports:
-      - "192.168.197.135:80:8080"
+      context: "."
+      dockerfile: "frontend/Dockerfile"
+    cap_drop:
+      - "ALL"
+    cpus: 0.5
     depends_on:
       backend:
-        condition: service_started
-    networks:
-      - app_network
-    read_only: true
-    tmpfs:
-      - /tmp:size=32m,mode=1777
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    mem_limit: 128m
-    cpus: 0.50
-    pids_limit: 64
+        condition: "service_started"
+        required: true
+    image: "minishop-frontend:nginx-v1"
     logging:
-      driver: json-file
+      driver: "json-file"
       options:
-        max-size: "5m"
         max-file: "3"
-
+        max-size: "5m"
+    mem_limit: "128m"
+    networks:
+      app_network: null
+    pids_limit: 64
+    ports:
+      -
+        host_ip: "192.168.197.135"
+        mode: "ingress"
+        protocol: "tcp"
+        published: "80"
+        target: 8080
+    read_only: true
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+    tmpfs:
+      - "/tmp:size=32m,mode=1777"
+    volumes:
+      -
+        bind:
+          create_host_path: false
+        read_only: true
+        source: "./nginx/nginx.monitoring.conf"
+        target: "/etc/nginx/nginx.conf"
+        type: "bind"
 networks:
   app_network:
-    driver: bridge
+    driver: "bridge"

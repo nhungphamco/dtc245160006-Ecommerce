@@ -1,117 +1,147 @@
-# ==============================================================
-# MONITORING OVERLAY — Prometheus + Grafana + Exporters
-# ==============================================================
-# Overlay thứ 3: dùng cùng compose.yaml và compose.nginx.yaml.
-# Lệnh chạy:
-#   docker compose -f compose.yaml -f compose.nginx.yaml \
-#     -f compose.monitoring.yaml up -d
-#
-# Tất cả exporter chỉ giao tiếp qua monitoring_network nội bộ,
-# không expose port ra host. Prometheus và Grafana chỉ bind
-# 127.0.0.1, truy cập qua SSH Tunnel khi cần.
+# Monitoring with cAdvisor/containerd, MySQL collector fix and Nginx exporter.
 
 services:
-  # ==========================================
-  # 5. NODE EXPORTER — Host metrics (CPU, RAM, Disk)
-  # ==========================================
-  # Mount read-only:
-  #   /proc  → đọc thông tin process/CPU/memory từ host
-  #   /sys   → đọc thông tin phần cứng/device từ host
-  #   /      → đọc filesystem để tính dung lượng đĩa
   node-exporter:
-    image: prom/node-exporter:v1.8.2
-    restart: unless-stopped
     command:
       - "--path.procfs=/host/proc"
       - "--path.sysfs=/host/sys"
       - "--path.rootfs=/rootfs"
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    networks:
-      - monitoring_network
-    mem_limit: 48m
-    cpus: 0.10
-    pids_limit: 32
-    security_opt:
-      - no-new-privileges:true
+    cpus: 0.1
+    image: "prom/node-exporter:v1.8.2"
     logging:
-      driver: json-file
+      driver: "json-file"
       options:
-        max-size: "3m"
         max-file: "2"
-
-  # ==========================================
-  # 6. cADVISOR — Docker container metrics
-  # ==========================================
-  # Mount read-only:
-  #   /var/run/docker.sock → truy cập Docker API để phát hiện container
-  #   /sys                 → đọc cgroup metrics (CPU, memory per container)
-  #   /var/lib/docker      → đọc disk usage của từng container
-  # Không dùng privileged; chỉ mount tối thiểu cần thiết.
+        max-size: "3m"
+    mem_limit: "48m"
+    networks:
+      monitoring_network: null
+    pids_limit: 32
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+    volumes:
+      -
+        bind:
+          create_host_path: true
+        read_only: true
+        source: "/proc"
+        target: "/host/proc"
+        type: "bind"
+      -
+        bind:
+          create_host_path: true
+        read_only: true
+        source: "/sys"
+        target: "/host/sys"
+        type: "bind"
+      -
+        bind:
+          create_host_path: true
+        read_only: true
+        source: "/"
+        target: "/rootfs"
+        type: "bind"
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
-    restart: unless-stopped
     command:
       - "--housekeeping_interval=30s"
       - "--docker_only=true"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    networks:
-      - monitoring_network
-    mem_limit: 80m
+      - "--containerd=/run/containerd/containerd.sock"
+      - "--enable_metrics=cpu,memory,network"
     cpus: 0.15
-    pids_limit: 32
-    security_opt:
-      - no-new-privileges:true
+    image: "ghcr.io/google/cadvisor:0.56.2"
     logging:
-      driver: json-file
+      driver: "json-file"
       options:
-        max-size: "3m"
         max-file: "2"
-
-  # ==========================================
-  # 7. MYSQL EXPORTER — MySQL metrics
-  # ==========================================
-  # Kết nối MySQL qua db_network bằng user 'exporter' quyền tối thiểu.
-  # Mật khẩu đọc từ biến MYSQL_EXPORTER_PASSWORD trong .env.
+        max-size: "3m"
+    mem_limit: "80m"
+    networks:
+      monitoring_network: null
+    pids_limit: 32
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+    volumes:
+      -
+        bind:
+          create_host_path: true
+        read_only: true
+        source: "/var/run/docker.sock"
+        target: "/var/run/docker.sock"
+        type: "bind"
+      -
+        bind:
+          create_host_path: true
+        read_only: true
+        source: "/sys"
+        target: "/sys"
+        type: "bind"
+      -
+        bind:
+          create_host_path: true
+        read_only: true
+        source: "/var/lib/docker/"
+        target: "/var/lib/docker"
+        type: "bind"
+      -
+        bind:
+          create_host_path: false
+        read_only: true
+        source: "/run/containerd/containerd.sock"
+        target: "/run/containerd/containerd.sock"
+        type: "bind"
   mysql-exporter:
-    image: prom/mysqld-exporter:v0.15.1
-    restart: unless-stopped
-    environment:
-      MYSQLD_EXPORTER_PASSWORD: ${MYSQL_EXPORTER_PASSWORD:?Missing MySQL exporter password}
     command:
       - "--mysqld.address=mysql:3306"
       - "--mysqld.username=exporter"
+      - "--no-collect.slave_status"
+    cpus: 0.1
     depends_on:
       mysql:
-        condition: service_healthy
-    networks:
-      - monitoring_network
-      - db_network
-    mem_limit: 32m
-    cpus: 0.10
-    pids_limit: 16
-    security_opt:
-      - no-new-privileges:true
+        condition: "service_healthy"
+        required: true
+    environment:
+      MYSQLD_EXPORTER_PASSWORD: "${MYSQL_EXPORTER_PASSWORD:?Missing MySQL exporter password}"
+    image: "prom/mysqld-exporter:v0.15.1"
     logging:
-      driver: json-file
+      driver: "json-file"
       options:
-        max-size: "3m"
         max-file: "2"
-
-  # ==========================================
-  # 8. PROMETHEUS — Metrics storage & collection
-  # ==========================================
-  # Retention 3 ngày, giới hạn 1 GB dung lượng.
-  # Chỉ bind 127.0.0.1:9090, truy cập qua SSH Tunnel.
+        max-size: "3m"
+    mem_limit: "32m"
+    networks:
+      db_network: null
+      monitoring_network: null
+    pids_limit: 16
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+  nginx-exporter:
+    cap_drop:
+      - "ALL"
+    command:
+      - "--nginx.scrape-uri=http://nginx:8081/stub_status"
+      - "--web.listen-address=:9113"
+      - "--nginx.timeout=5s"
+    cpus: 0.1
+    image: "nginx/nginx-prometheus-exporter:1.5.3"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "2"
+        max-size: "3m"
+    mem_limit: "32m"
+    networks:
+      app_network: null
+      monitoring_network: null
+    pids_limit: 32
+    read_only: true
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
   prometheus:
-    image: prom/prometheus:v2.54.1
-    restart: unless-stopped
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -119,67 +149,86 @@ services:
       - "--storage.tsdb.retention.size=1GB"
       - "--web.console.libraries=/etc/prometheus/console_libraries"
       - "--web.console.templates=/etc/prometheus/consoles"
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    ports:
-      - "127.0.0.1:9090:9090"
-    networks:
-      - monitoring_network
-    mem_limit: 160m
     cpus: 0.25
-    pids_limit: 64
-    security_opt:
-      - no-new-privileges:true
+    image: "prom/prometheus:v2.54.1"
     logging:
-      driver: json-file
+      driver: "json-file"
       options:
-        max-size: "5m"
         max-file: "3"
-
-  # ==========================================
-  # 9. GRAFANA — Dashboard & visualization
-  # ==========================================
-  # Mật khẩu admin đọc từ GF_SECURITY_ADMIN_PASSWORD trong .env.
-  # Datasource Prometheus được auto-provision khi khởi động.
-  grafana:
-    image: grafana/grafana-oss:11.4.0
-    restart: unless-stopped
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?Missing Grafana admin password}
-      GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_SERVER_ROOT_URL: "http://localhost:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    ports:
-      - "127.0.0.1:3000:3000"
-    depends_on:
-      - prometheus
+        max-size: "5m"
+    mem_limit: "160m"
     networks:
-      - monitoring_network
-    mem_limit: 128m
-    cpus: 0.20
+      monitoring_network: null
     pids_limit: 64
+    ports:
+      -
+        host_ip: "127.0.0.1"
+        mode: "ingress"
+        protocol: "tcp"
+        published: "9090"
+        target: 9090
+    restart: "unless-stopped"
     security_opt:
-      - no-new-privileges:true
+      - "no-new-privileges:true"
+    volumes:
+      -
+        bind:
+          create_host_path: true
+        read_only: true
+        source: "./monitoring/prometheus/prometheus.yml"
+        target: "/etc/prometheus/prometheus.yml"
+        type: "bind"
+      -
+        source: "prometheus_data"
+        target: "/prometheus"
+        type: "volume"
+        volume: {}
+  grafana:
+    cpus: 0.2
+    depends_on:
+      prometheus:
+        condition: "service_started"
+        required: true
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GF_SECURITY_ADMIN_PASSWORD:?Missing Grafana admin password}"
+      GF_SERVER_ROOT_URL: "http://localhost:3000"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    image: "grafana/grafana-oss:11.4.0"
     logging:
-      driver: json-file
+      driver: "json-file"
       options:
-        max-size: "5m"
         max-file: "3"
-
-# ==========================================
-# PERSISTENT VOLUMES (monitoring)
-# ==========================================
+        max-size: "5m"
+    mem_limit: "128m"
+    networks:
+      monitoring_network: null
+    pids_limit: 64
+    ports:
+      -
+        host_ip: "127.0.0.1"
+        mode: "ingress"
+        protocol: "tcp"
+        published: "3000"
+        target: 3000
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+    volumes:
+      -
+        source: "grafana_data"
+        target: "/var/lib/grafana"
+        type: "volume"
+        volume: {}
+      -
+        bind:
+          create_host_path: true
+        read_only: true
+        source: "./monitoring/grafana/provisioning"
+        target: "/etc/grafana/provisioning"
+        type: "bind"
 volumes:
-  prometheus_data:
-  grafana_data:
-
-# ==========================================
-# DOCKER NETWORKS (monitoring)
-# ==========================================
+  prometheus_data: null
+  grafana_data: null
 networks:
   monitoring_network:
-    driver: bridge
-  db_network: {}
+    driver: "bridge"

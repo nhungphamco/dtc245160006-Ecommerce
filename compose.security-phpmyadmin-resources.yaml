@@ -1,9 +1,0 @@
-# Preparation only. Append after the verified 13-file Compose set.
-# Recreate only phpmyadmin after separate approval and merged-config checks.
-# Initial lab budget; validate normal admin work and observe OOM/restarts.
-services:
-  phpmyadmin:
-    mem_limit: 256m
-    memswap_limit: 512m
-    cpus: 0.50
-    pids_limit: 128

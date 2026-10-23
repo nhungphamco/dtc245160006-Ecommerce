@@ -1,7 +1,92 @@
+# Loki and Promtail only. Requires monitoring_network and existing Promtail state.
+# Promtail is EOL; retained by choice for this lab. No Alloy dependency.
+
 services:
-  backend:
+  loki:
+    command:
+      - "-config.file=/etc/loki/config.yaml"
+    cpus: 0.5
+    image: "grafana/loki:3.6.7"
     logging:
-      driver: json-file
+      driver: "json-file"
       options:
-        max-size: "5m"
-        max-file: "3"
+        max-file: "2"
+        max-size: "3m"
+    mem_limit: "256m"
+    networks:
+      monitoring_network: null
+    pids_limit: 64
+    ports:
+      -
+        host_ip: "127.0.0.1"
+        mode: "ingress"
+        protocol: "tcp"
+        published: "3100"
+        target: 3100
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+    volumes:
+      -
+        bind:
+          create_host_path: false
+        read_only: true
+        source: "./logging/loki.yaml"
+        target: "/etc/loki/config.yaml"
+        type: "bind"
+      -
+        source: "loki_data"
+        target: "/loki"
+        type: "volume"
+        volume: {}
+  promtail:
+    cap_drop:
+      - "ALL"
+    command:
+      - "-config.file=/etc/promtail/config.yaml"
+    cpus: 0.3
+    environment:
+      GOMEMLIMIT: "160MiB"
+    image: "grafana/promtail:3.6.7@sha256:d5c160912b35cd658b82bff2d06554e38f868fd46141562b9b4da7a7408cc179"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "2"
+        max-size: "3m"
+    mem_limit: "256m"
+    memswap_limit: "512m"
+    networks:
+      monitoring_network: null
+    pids_limit: 64
+    platform: "linux/amd64"
+    read_only: true
+    restart: "unless-stopped"
+    security_opt:
+      - "no-new-privileges:true"
+    stop_grace_period: "30s"
+    tmpfs:
+      - "/tmp:size=16m,mode=1777"
+    user: "0:0"
+    volumes:
+      -
+        bind:
+          create_host_path: false
+        read_only: true
+        source: "./logging/promtail.yaml"
+        target: "/etc/promtail/config.yaml"
+        type: "bind"
+      -
+        bind:
+          create_host_path: false
+        read_only: true
+        source: "/var/run/docker.sock"
+        target: "/var/run/docker.sock"
+        type: "bind"
+      -
+        bind:
+          create_host_path: false
+        source: "/home/minishop/.minishop-promtail"
+        target: "/var/lib/promtail"
+        type: "bind"
+volumes:
+  loki_data: null

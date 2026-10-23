@@ -1,5 +1,7 @@
 # C08 — Chuyển collector Alloy sang Promtail cho bài lab
 
+> **Lịch sử triển khai:** bộ Compose hiện hành đã gộp ngày 24/10/2026, chỉ dùng Promtail; Alloy và script cutover cũ đã được bỏ khỏi source. Tên file/rollback bên dưới ghi lại thời điểm chuyển collector, không phải hướng dẫn chạy hiện tại. Xem [runbook](security-operations.md) và [so sánh cấu hình](compose-consolidation.md). Không chạy lại cutover hoặc tạo lại Alloy theo ghi chép cũ.
+
 Ngày21/10/2026. **CUTOVER THÀNH CÔNG, ĐANG NGHIỆM THU.** Người dùng đã chọn dùng Promtail để khớp yêu cầu môn học. Không tự SSH, pull, start/stop hoặc thay container trên Ubuntu. Mỗi lượt thực hành tối đa1–3khối lệnh; chờ output trước bước phụ thuộc.
 
 ## Lý do và giới hạn

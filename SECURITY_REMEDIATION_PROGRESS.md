@@ -1,5 +1,7 @@
 # MINISHOP — SECURITY REMEDIATION PROGRESS
 
+> **Cập nhật source 24/10/2026:** đã gộp Compose từ 15 thành 5 file, bỏ Alloy và script cutover lịch sử. So sánh normalized config của 12 service còn lại đạt khi bật/tắt SMTP. Chưa triển khai bộ file mới trên VM hoặc xóa container/volume Alloy cũ. Xem [biên bản](docs/compose-consolidation.md). Các mục bên dưới giữ nguyên theo thời điểm thực hiện.
+
 Ngày cập nhật: 21/10/2026, Asia/Saigon.
 
 Đối chiếu SECURITY_AUDIT_REPORT.md và SECURITY_RUNTIME_VERIFICATION_REPORT.md. Báo cáo runtime giữ nguyên bằng chứng trước khắc phục; file này ghi nhận tiến triển Giai đoạn C. Lệnh Ubuntu/Windows do người dùng chạy, trợ lý đối chiếu output được gửi. Không commit/push.

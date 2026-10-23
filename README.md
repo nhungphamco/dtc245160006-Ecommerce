@@ -99,6 +99,20 @@ Rà ngày **24/10/2026**: backend **49 test**, frontend API **16 test** đều �
 
 Lab đã có web/API, metrics, log Nginx và backup. Chưa nghiệm thu toàn bộ: còn HTTP, restore bản backup mới, log Backend sau cutover và một số kiểm tra bảo mật. Source monitoring chưa tái tạo đầy đủ dashboard/alert và cấu hình thực tế trên VM. Promtail đã [EOL](https://grafana.com/docs/loki/latest/send-data/promtail/), được giữ cho bài lab.
 
+## Cấu hình triển khai
+
+| File | Vai trò |
+|---|---|
+| `compose.yaml` | MySQL, Backend, phpMyAdmin; rotation và giới hạn tài nguyên đã gộp |
+| `compose.nginx.yaml` | Website, reverse proxy và Nginx metrics |
+| `compose.monitoring.yaml` | Prometheus/Grafana và các exporter, đã gộp các bản vá |
+| `compose.logging.yaml` | Loki và Promtail |
+| `compose.grafana-smtp.yaml` | Email Grafana, tùy chọn |
+
+Bộ source đã rút từ 15 còn 5 file, không còn Alloy. Cấu hình merge của 12 service còn lại khớp bộ cũ, cả bật/tắt SMTP. [Chi tiết so sánh](docs/compose-consolidation.md).
+
+Đây là thay đổi source, chưa tự chuyển cấu hình container trên Ubuntu. Giữ bộ file cũ và overlay image đang chạy trước khi đồng bộ; không pull/xóa file hay recreate toàn stack theo danh sách mới. `deploy/compose.demo.yaml` vẫn dành riêng cho demo ở trên.
+
 ## Tài liệu
 
 - [Vận hành hệ thống](docs/security-operations.md)

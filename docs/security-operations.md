@@ -1,99 +1,73 @@
-# MiniShop — Runbook vận hành sau C08
+# Vận hành MiniShop
 
-Cập nhật21/10/2026, Asia/Saigon. Đây là tài liệu mới trên Windows; chưa xác nhận đã được copy lên Ubuntu. Không thay thế toàn bộ README cũ. Đối chiếu SECURITY_REMEDIATION_PROGRESS.md để xem bằng chứng và giới hạn.
+Bộ cấu hình source được tinh gọn ngày **24/10/2026**. Hệ thống dùng **Promtail**, không còn service/volume Alloy trong source hiện hành. [Biên bản so sánh](compose-consolidation.md) ghi rõ phạm vi kiểm tra.
 
-## Bộ cấu hình hiện tại
+## Bộ file hiện hành
 
-Ubuntu project ecommerce, thư mục /home/minishop/Ecommerce. Sau C08, dùng đúng 15 file theo thứ tự dưới. 11 file đầu là cấu hình gốc; hai file tiếp theo áp log rotation, file thứ 14 áp limits phpMyAdmin, file thứ 15 chuyển collector sang Promtail. Alloy được giữ trong profile alloy-rollback và đã dừng có chủ đích. Không dùng riêng compose.yaml để recreate service. Không bỏ overlay hardening khi thao tác về sau trừ rollback được duyệt.
+| File | Nội dung |
+|---|---|
+| `compose.yaml` | MySQL, Backend, phpMyAdmin; log rotation và giới hạn phpMyAdmin |
+| `compose.nginx.yaml` | Website, proxy Backend và cấu hình Nginx metrics |
+| `compose.monitoring.yaml` | Prometheus, Grafana, cAdvisor, node-exporter, MySQL/Nginx exporters |
+| `compose.logging.yaml` | Loki và Promtail |
+| `compose.grafana-smtp.yaml` | Gửi mail Grafana, tùy chọn |
 
-**Chạy trong Bash trên Ubuntu**, không chạy khối này trong PowerShell:
+Dùng thứ tự: nền → Nginx → monitoring → logging → SMTP (nếu cần). `deploy/compose.demo.yaml` vẫn chỉ dùng demo ứng dụng trên máy mới theo README.
+
+## Kiểm tra source mới
+
+**Ubuntu Bash**, sau khi bộ source mới đã được chuẩn bị ở đúng vị trí. Đây là kiểm tra cấu hình, không khởi động container:
 
 ```bash
+cd /home/minishop/Ecommerce
 compose_args=(
   --project-directory /home/minishop/Ecommerce
   -p ecommerce
-  -f /home/minishop/Ecommerce/compose.yaml
-  -f /home/minishop/Ecommerce/compose.nginx.yaml
-  -f /home/minishop/Ecommerce/compose.monitoring.yaml
-  -f /home/minishop/Ecommerce/compose.cadvisor-fix.yaml
-  -f /home/minishop/Ecommerce/compose.mysql-exporter-fix.yaml
-  -f /home/minishop/Ecommerce/compose.nginx-metrics.yaml
-  -f /home/minishop/Ecommerce/compose.nginx-exporter.yaml
-  -f /home/minishop/Ecommerce/compose.grafana-smtp.yaml
-  -f /home/minishop/Ecommerce/compose.logging.yaml
-  -f /home/minishop/Ecommerce/compose.loki.yaml
-  -f /home/minishop/Ecommerce/compose.alloy.yaml
-  -f /home/minishop/Ecommerce/compose.security-phpmyadmin.yaml
-  -f /home/minishop/Ecommerce/compose.security-mysql-logging.yaml
-  -f /home/minishop/Ecommerce/compose.security-phpmyadmin-resources.yaml
-  -f /home/minishop/Ecommerce/compose.promtail.yaml
+  -f compose.yaml
+  -f compose.nginx.yaml
+  -f compose.monitoring.yaml
+  -f compose.logging.yaml
 )
-```
-
-Biến chỉ tồn tại trong terminal đó. Khai báo lại khi mở terminal mới. Các đường dẫn và projectname trong runbook chỉ đúng cho môi trường đã xác minh; không dùng cho máy khác mà chưa đối chiếu.
-
-## Kiểm tra chỉ đọc
-
-Chạy riêng từng lệnh và đối chiếu output, không coi đây là script tự triển khai:
-
-```bash
 sudo docker compose "${compose_args[@]}" config --quiet
+sudo docker compose "${compose_args[@]}" config --services
 ```
 
-Validate không xuất config chứa giá trị env. Thành công chưa chứng minh file trên đĩa giống toàn bộ container đang chạy. Không dùng config không lọc hoặc inspect đầy đủ để gửi báo cáo.
+Có **12 service** trong full stack, không có Alloy. Nếu dùng SMTP, thêm `-f compose.grafana-smtp.yaml` trước lệnh `config`. Phải có biến SMTP và secret file với quyền đọc phù hợp. Không in config đầy đủ đã nội suy mật khẩu.
+
+Các điều kiện lab vẫn giữ: IP `192.168.197.135`, project `ecommerce`, Docker/containerd socket, state `/home/minishop/.minishop-promtail`, dữ liệu volume và schema đã có. Đây chưa phải cấu hình full stack portable cho mọi máy.
+
+## Máy Ubuntu đang chạy có bộ file cũ
+
+**Gộp source không tự cập nhật container.** Nginx từng được cập nhật bằng overlay image ngoài repo; các service khác có thể mang danh sách file khác. Trước bất kỳ lần chuyển cấu hình nào, đọc label của từng service mục tiêu:
 
 ```bash
-sudo docker compose "${compose_args[@]}" --profile '*' config --services
+sudo docker inspect ecommerce-nginx-1 --format 'Image={{.Config.Image}} ComposeFiles={{index .Config.Labels "com.docker.compose.project.config_files"}}'
+sudo docker ps -a --filter label=com.docker.compose.project=ecommerce --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 ```
 
-Khi bao gồm mọi profile, có 13 service được định nghĩa: mysql, phpmyadmin, backend, nginx, prometheus, grafana, cadvisor, node-exporter, mysql-exporter, nginx-exporter, loki, alloy, promtail. Trạng thái sau cutover là 12 container hoạt động và Alloy dừng có chủ đích. Thứ tự output có thể khác.
+Quy trình chuyển bộ file trên VM:
+
+1. Sao lưu các file cũ được container tham chiếu, `.env` giữ kín, image IDs và các overlay image đang có hiệu lực. Không pull đè source Ubuntu đang sửa/untracked.
+2. Đặt bộ file mới trong staging; dùng `--project-directory /home/minishop/Ecommerce` để giữ bind paths đúng, project vẫn `ecommerce`.
+3. So sánh config cũ/mới bằng môi trường thật trong file riêng tư. Giữ overlay image hiện tại ở cuối; không vô tình quay Nginx về tag `nginx-v1`.
+4. Chỉ sau khi diff đúng kế hoạch mới cập nhật riêng service cần thiết với `--no-deps --no-build --pull never`. Không `up` cả stack để thử, không dùng `--remove-orphans`, không xóa volume.
+5. Kiểm tra HTTP/API, metrics, log, mounts và container ID của các service không thuộc phạm vi thay đổi.
+
+Bài so sánh source đã đạt với env mẫu không thay thế bước so sánh runtime này. Container Alloy cũ đang dừng và volume cũ trên Ubuntu **chưa bị xóa** trong lượt gộp source; xử lý riêng sau khi xác nhận không còn dùng, không tự dọn theo tên orphan.
+
+## Kiểm tra hoạt động
 
 ```bash
-sudo docker compose "${compose_args[@]}" ps --all
+curl --max-time 10 -fsS -w '\nHTTP=%{http_code}\n' http://192.168.197.135/healthz
+curl --max-time 10 -fsS -w '\nHTTP=%{http_code}\n' http://192.168.197.135/api/health
+curl --max-time 10 -fsS -G --data-urlencode 'query={__name__=~"up|mysql_up|nginx_up"}' http://127.0.0.1:9090/api/v1/query
+curl --max-time 10 -fsS http://127.0.0.1:3100/ready
 ```
 
-Mong đợi không Exited/Restarting/unhealthy ngoài kế hoạch đã biết; running không đủ để chứng minh ứng dụng/metrics/logs đúng.
+Mong đợi Nginx/API 200, database connected, năm job UP ở lab, mysql_up/nginx_up=1 và Loki ready. Source Prometheus/Grafana còn khoảng trống bàn giao đã nêu trong README; không sửa query để che thiếu dữ liệu. Kiểm fresh Nginx/Backend log riêng, không suy ra ingestion từ trạng thái running.
 
-```bash
-curl --max-time 10 -sS -w '\nHTTP=%{http_code}\n' http://192.168.197.135/api/health
-```
+## Dữ liệu và quay lại phiên bản trước
 
-Mong đợi200/statusok/databaseconnected. Health không thay thế test các chức năng nghiệp vụ.
+Giữ volume MySQL/Loki/Grafana/Prometheus và positions Promtail. Để quay lại một thay đổi, dùng bộ cấu hình và image đã sao lưu của đúng service; không restore DB cũ để rollback giao diện. Source hiện tại không cung cấp lại Alloy hoặc script cutover lịch sử.
 
-## Bảo toàn dữ liệu và cập nhật
-
-- Bất kỳ up/recreate nào cũng cần kiểm tra imageID/digest hiện tại, volume/network mapping, config diff, backup, tác động và phê duyệt đúng service. Không up toàn stack để thử. Restart đơn thuần không áp dụng logging/environment mới.
-- phpMyAdmin image lúc C04: sha256:da3c72f9886fca93037b740c93fe1697a7924fe6790a58733814cee61ec49af8.
-- MySQL image lúc C05: sha256:24989179f58856db763f418010c1169fecc944e3ec1ea7e921572d83eb070f70; mysql_data phải ánh xạ volume ecommerce_mysql_data. Tag có thể thay đổi, phải đối chiếu trước mỗi lần recreate.
-- C04/C05 xác minh LogConfig json-file, max-size5m/max-file3; không thay MySQL schema/grants/image/volume/resource limits. Chỉ respective container bị recreate. Log Docker cũ có thể mất khi recreate; chưa stress rollover15MB.
-- C07 xác minh riêng phpMyAdmin RAM256MiB, tổng RAM+swap512MiB, CPU0.5, PIDlimit128, giữ logging/image; chỉ phpMyAdmin bị recreate. HTTP/API200, no restart/OOM trong snapshot, tác vụ COUNT products trả4 thành công qua UI. Không coi đây là chứng minh import/concurrency lớn đạt. Rollback resources nếu cần: bỏ riêng compose.security-phpmyadmin-resources.yaml, giữ compose.promtail.yaml và các overlay logging, kiểm tra config/image và recreate chỉ phpmyadmin theo kế hoạch được duyệt.
-- Không down -v, xóa/prune volume, resetDB/migrate, đổi storage driver, ghi đè.env hoặc commit/push nếu chưa được giao riêng. Không restore dump cũ để rollback Nginx/exporter/logging config.
-- Rollback MySQL logging nếu cần: bỏ riêng compose.security-mysql-logging.yaml khỏi bộfile, giữ overlay phpMyAdmin, xác minh image/volume rồi recreate riêng mysql theo kế hoạch được duyệt. Vẫn gây gián đoạnDB; không tự chạy khi đanghealthy.
-- Rollback phpMyAdmin logging nếu cần: bỏ riêng compose.security-phpmyadmin.yaml, giữ overlay MySQL nếu đã áp, xác minh image và recreate riêng phpmyadmin. Không thay service khác.
-- Sau bất kỳ thay đổi: xác minh config hiệu lực, health/API/metrics/logs, và diff name/containerID/imageID/StartedAt với baseline; chỉ service được phép mới đổiID.
-
-## Backup đã có bằng chứng
-
-DB mới: /home/minishop/minishop-db-backup.DTN5at/database.sql,9155byte, checksumOK; Windows C:/Users/nhungpham/MiniShopPrivateBackups/minishop-db-backup.DTN5at/database.sql, checksumcopyOK. Chưa thực hiện restore cô lập, chưa có RPO/RTO/lịch backup đã chốt. Đây là bản ngoàiVM nhưng cùng máy vật lý.
-
-Config trước hardening: /home/minishop/minishop-security-config.C9FXwP/config.tar.gz, Windows cùng tên dưới MiniShopPrivateBackups,14974byte, checksumOK. Archive chứa11Compose files gốc, chưa chứa2overlay sauC05; giữ nguyên bản lịch sử này.
-
-Config sau C05: /home/minishop/minishop-security-after-rotation.VMDOYM/config.tar.gz,15181byte; tar inventory13Compose files/checksumOK, thư mục700, archive/manifest600. Bản Windows C:/Users/nhungpham/MiniShopPrivateBackups/minishop-security-after-rotation.VMDOYM/config.tar.gz có checksum khớp theo output người dùng. Đây là backup bộ cấu hình13file hiện tại; không phải bằng chứng mọi nội dung archive đã được rà secrets hoặc clean deployment đã thành công.
-
-Sau C07 runtime có14file; archive13file trên là baseline trước limits, chưa chứa compose.security-phpmyadmin-resources.yaml. File nguồn overlay thứ14 có trên Windows và đã có hiệu lực Ubuntu theo inspect. Chưa có bằng chứng archive mới14file ngoàiVM; giữ bản13file và bổ sung backup trong bước riêng.
-
-Archive cấu hình phải giữ kín: không có.env thật/SMTPsecret trong danh sách chọn không có nghĩa đã loại hết literal secrets trong các config khác. Không đưa archive raw vào Git. Để bàn giao source cần rà secrets, so sánh/diff với Windows rồi đồng bộ có kiểm soát; chưa khẳng định H03 hoàn tất từ việc tạo backup.
-
-Backup config không đủ cho tái triển khai toàn bộ: cần source/lockfiles/images hoặc build tái lập, secrets nhập riêng, schema/bootstrap/grants và dữ liệu đã thử restore. SMTP secret ngoài dự án phải có phương án lưu/khôi phục kín riêng; không coi archive này đã bao phủ secret đó.
-
-## Minh chứng và tồn đọng
-
-Ảnh đề xuất C04:06-10-phpmyadmin-log-rotation.png; C05:06-11-mysql-log-rotation.png. Chỉ lưu output đã kiểm tra, không in/chụp password,token,cookieValue,hashxác thực hoặc nội dungdump/PII.
-
-H04 mới xử lý rotation core services: Backend đã có rotation trước; MySQL/phpMyAdmin có sauC04/C05. Limits còn thiếu. HTTPS, sockets, grants, retention/redaction, restore, test auth còn thiếu và bộ source bàn giao đầy đủ vẫn theo audit/runtime/progress reports. Không coi runbook mới là bằng chứng các vấn đề đó đã khắc phục.
-
-## Kết quả C08 và rollback collector
-
-Người dùng đã chạy script cutover thành công: PROMTAIL_READY, CUTOVER_OK, FRESH_NGINX_LOG_CONFIRMED và API_HEALTH_OK; 11 container khác không đổi. Alloy dừng có chủ đích. Backup tại /home/minishop/minishop-before-promtail.SKaFy3/cutover.MJalqH có chín mục kiểm checksum OK, gồm cấu hình lúc chuyển, state Alloy sau dừng, positions và metadata. Chưa xác nhận bản backup này ngoài VM.
-
-Nếu cần rollback, dừng riêng Promtail rồi mới start container Alloy cũ; giữ nguyên state và volume, không chạy đồng thời hai collector. Chưa diễn tập rollback. Log Backend mới và ảnh Grafana sau chuyển còn cần kiểm chứng; readiness không thay thế kiểm thử ingestion. Xem docs/promtail-transition.md.
+Xem [backup MySQL](automated-backup.md), [lịch sử chuyển collector](promtail-transition.md) và [README](../README.md) cho phạm vi demo, kiểm thử và hạn chế.

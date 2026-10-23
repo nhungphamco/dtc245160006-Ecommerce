@@ -1,96 +1,106 @@
+# Core application, including log rotation and phpMyAdmin resource limits.
+
 services:
-  # ==========================================
-  # 1. MYSQL DATABASE
-  # ==========================================
   mysql:
-    image: mysql:8.4
-    restart: unless-stopped
-
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Missing root password}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:?Missing database}
-      MYSQL_USER: ${MYSQL_USER:?Missing username}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Missing app password}
-
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-
-    networks:
-      - db_network
-
+      MYSQL_DATABASE: "${MYSQL_DATABASE:?Missing database}"
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:?Missing app password}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Missing root password}"
+      MYSQL_USER: "${MYSQL_USER:?Missing username}"
     healthcheck:
-      test:
-        - CMD-SHELL
-        - 'MYSQL_PWD="$${MYSQL_ROOT_PASSWORD}" mysqladmin ping -h 127.0.0.1 -u root --silent'
-      interval: 10s
-      timeout: 5s
+      interval: "10s"
       retries: 15
-      start_period: 40s
-
-  # ==========================================
-  # 2. PHPMYADMIN
-  # ==========================================
+      start_period: "40s"
+      test:
+        - "CMD-SHELL"
+        - "MYSQL_PWD=\"$${MYSQL_ROOT_PASSWORD}\" mysqladmin ping -h 127.0.0.1 -u root --silent"
+      timeout: "5s"
+    image: "mysql:8.4"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "3"
+        max-size: "5m"
+    networks:
+      db_network: null
+    restart: "unless-stopped"
+    volumes:
+      -
+        source: "mysql_data"
+        target: "/var/lib/mysql"
+        type: "volume"
+        volume: {}
+      -
+        bind:
+          create_host_path: true
+        read_only: true
+        source: "./database/init.sql"
+        target: "/docker-entrypoint-initdb.d/init.sql"
+        type: "bind"
   phpmyadmin:
-    image: phpmyadmin:5.2
-    restart: unless-stopped
-
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-
-    ports:
-      - "127.0.0.1:8081:80"
-
+    cpus: 0.5
     depends_on:
       mysql:
-        condition: service_healthy
-
+        condition: "service_healthy"
+        required: true
+    environment:
+      PMA_HOST: "mysql"
+      PMA_PORT: 3306
+    image: "phpmyadmin:5.2"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "3"
+        max-size: "5m"
+    mem_limit: "256m"
+    memswap_limit: "512m"
     networks:
-      - db_network
-
-  # ==========================================
-  # 3. NODE.JS BACKEND
-  # ==========================================
+      db_network: null
+    pids_limit: 128
+    ports:
+      -
+        host_ip: "127.0.0.1"
+        mode: "ingress"
+        protocol: "tcp"
+        published: "8081"
+        target: 80
+    restart: "unless-stopped"
   backend:
     build:
-      context: ./backend
-
-    restart: unless-stopped
-
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_NAME: ${MYSQL_DATABASE:?Missing database}
-      DB_USER: ${MYSQL_USER:?Missing username}
-      DB_PASSWORD: ${MYSQL_PASSWORD:?Missing app password}
-      APP_ORIGIN: ${APP_ORIGIN:?Missing allowed frontend origin}
-      AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-}
-
+      context: "./backend"
     depends_on:
       mysql:
-        condition: service_healthy
-
-    ports:
-      - "127.0.0.1:3001:3000"
-
+        condition: "service_healthy"
+        required: true
+    environment:
+      APP_ORIGIN: "${APP_ORIGIN:?Missing allowed frontend origin}"
+      AUTH_ALLOWED_ORIGINS: "${AUTH_ALLOWED_ORIGINS:-}"
+      DB_HOST: "mysql"
+      DB_NAME: "${MYSQL_DATABASE:?Missing database}"
+      DB_PASSWORD: "${MYSQL_PASSWORD:?Missing app password}"
+      DB_PORT: "3306"
+      DB_USER: "${MYSQL_USER:?Missing username}"
+      NODE_ENV: "production"
+      PORT: "3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "3"
+        max-size: "5m"
     networks:
-      - db_network
-
+      db_network: null
+    ports:
+      -
+        host_ip: "127.0.0.1"
+        mode: "ingress"
+        protocol: "tcp"
+        published: "3001"
+        target: 3000
+    restart: "unless-stopped"
     security_opt:
-      - no-new-privileges:true
-
-# ==========================================
-# PERSISTENT VOLUMES
-# ==========================================
+      - "no-new-privileges:true"
 volumes:
-  mysql_data:
-
-# ==========================================
-# DOCKER NETWORKS
-# ==========================================
+  mysql_data: null
 networks:
   db_network:
-    driver: bridge
+    driver: "bridge"
