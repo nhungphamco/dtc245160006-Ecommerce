@@ -46,7 +46,7 @@ Cập nhật **21/10/2026**:
 - Năm target Prometheus UP; đã kiểm chứng log Nginx mới trên Grafana sau chuyển sang Promtail.
 - Bộ cấu hình gồm **15 file Compose**, 12 container hoạt động; Alloy dừng có chủ đích để giữ phương án rollback.
 - Đã áp dụng security headers, Origin guard/RBAC, log rotation và giới hạn tài nguyên cho một số service.
-- Backup DB/config có checksum và bản sao ngoài VM.
+- Backup MySQL qua systemd lúc 02:00 giờ Việt Nam, retention giữ 7 bản hoàn tất; service chạy thủ công đã đạt và bản mới có checksum khớp ngoài VM. Lần chạy tự nhiên theo lịch chưa được xác minh.
 
 **Chưa nghiệm thu toàn bộ:** cài mới và restore cô lập chưa được diễn tập; log Backend mới sau cutover chưa được kiểm chứng. HTTPS và một số finding bảo mật vẫn còn. Xem báo cáo tiến độ để biết phạm vi từng kết quả.
 
@@ -125,7 +125,8 @@ Không đưa mật khẩu, token, cookie, SQL dump hoặc archive riêng tư và
 
 | Tài liệu | Nội dung |
 |---|---|
-| `docs/security-operations.md` | Bộ Compose, vận hành, backup và rollback |
+| `docs/security-operations.md` | Bộ Compose, vận hành và rollback |
+| `docs/automated-backup.md` | Backup systemd, retention, bản sao ngoài VM và giới hạn |
 | `docs/compose-handoff-status.md` | Đối chiếu cấu hình Ubuntu/Windows |
 | `docs/promtail-transition.md` | Chuyển collector và giới hạn kiểm thử |
 | `SECURITY_AUDIT_REPORT.md` | Static audit và phân loại findings |

@@ -118,3 +118,11 @@ Cập nhật C08: đã có backup 14 file trước chuyển và 15 file lúc chu
 - Inventory cuối: 12 container Up; Alloy Exited (0) có chủ đích. MySQL, Nginx, cAdvisor healthy. Promtail không publish cổng; các dịch vụ quản trị vẫn bind loopback theo docker ps. Không coi snapshot này là kiểm thử truy cập LAN mới.
 - Ảnh đề xuất: 06-15-promtail-nginx-cutover.png, 06-16-promtail-hardening.png, 06-17-final-containers-promtail.png. Đã nhận ảnh Grafana trong chat; chưa xác nhận tên file PNG được lưu trên đĩa.
 - Chốt chuyển collector thành công trong phạm vi đã kiểm chứng. Restore cô lập, lịch backup, log Backend mới và các finding bảo mật khác vẫn còn; chưa nghiệm thu toàn bộ dự án.
+
+## C15 — Backup tự động, 23/10/2026
+
+Người vận hành cài script/service/timer:02:00giờViệtNam, timerenabledactive. Dump thử và hai lần startservice thủ công đạt; retention giữ7bản đã tích hợp, output3bản hợp lệ/giữ3/xóa0/RETENTION_APPLY_OK. Resultsuccess/exit0. Chưa kiểm chứng lần chạy tự nhiên, nhánh dọn khi hơn7bản, copyngoàiVM của backupmới hoặc restore. RPOmục tiêu24giờ có điều kiện; RTOchưa xác định. Xem docs/automated-backup.md.
+
+Auth bổ sung: output runtime xác nhận login200, cookie trước logout200, Originlạ logout403/phiênvẫn200, logoutđúngOrigin204, cookiecũsau logout401. Chứng minh Origin guard cho logout và server-side session revocation; chưa bao phủ mọi CSRFendpoint hoặc session expiry tự nhiên. IDOR mới có xác nhận miệng của người dùng, chưa nhận outputbổsung.
+
+Cập nhật C15: bản backup backup-20261023T083147Z-EUICom được kiểm gzip/checksum thành công, xuất riêng cho SCP và copy 4 file vào D:/MiniShopPrivateBackups/db-auto-20261023T083147Z-EUICom. Người dùng gửi OFF_VM_AUTOMATED_DB_BACKUP_CHECKSUM_OK; dump gzip 2979 byte. Copy ngoài VM thủ công, chưa tự đồng bộ; lần chạy timer tự nhiên/restore/nhánh dọn hơn7bản vẫn chưa xác minh. File nguồn systemd và helper lưu trên Windows; chưa commit/push trong lượt này.
