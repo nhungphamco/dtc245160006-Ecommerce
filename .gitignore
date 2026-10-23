@@ -45,3 +45,23 @@ positions.yaml
 
 # Unrelated coursework accidentally stored under screenshots
 /screenshots/Python/
+
+# Local review and account maintenance (not project deliverables)
+/docs/system-review-2026-10-24.md
+/scripts/reset-admin-2-password.cjs
+
+# Publish only the selected deployment evidence; retain other images locally.
+/screenshots/*
+!/screenshots/nginx-website.png
+!/screenshots/nginx-api-proxy.png
+!/screenshots/grafanacadvisor.png
+!/screenshots/grafanamys.png
+!/screenshots/promtail-hardening.png
+!/screenshots/promtail-nginx-cutover.png
+!/screenshots/finalllcontainer.png
+!/screenshots/network-isolation.png
+!/screenshots/exposed-ports.png
+!/screenshots/backup-integrity.png
+!/screenshots/backup-timer-active.png
+!/screenshots/backup-service-retention-success.png
+!/screenshots/backup-auto-off-vm.png

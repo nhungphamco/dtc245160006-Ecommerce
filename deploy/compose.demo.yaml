@@ -1,0 +1,30 @@
+# Application-only demo on a NEW, isolated host/project. Not a lab update overlay.
+# Requires Compose >= 2.24.4 for !override. First -f must be root compose.yaml.
+services:
+  mysql:
+    volumes:
+      - type: bind
+        source: ./database/migrations/001_auth.sql
+        target: /docker-entrypoint-initdb.d/z10-auth.sql
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./database/migrations/002_product_visibility.sql
+        target: /docker-entrypoint-initdb.d/z20-product-visibility.sql
+        read_only: true
+        bind:
+          create_host_path: false
+  backend:
+    environment:
+      APP_ORIGIN: http://localhost:18080
+      AUTH_ALLOWED_ORIGINS: ""
+    ports: !override
+      - "127.0.0.1:13001:3000"
+  phpmyadmin:
+    ports: !override
+      - "127.0.0.1:18081:80"
+  nginx:
+    image: minishop-frontend:demo
+    ports: !override
+      - "127.0.0.1:18080:8080"
