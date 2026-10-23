@@ -1,0 +1,10 @@
+.hero__art > .hero__product-image {
+    position: relative;
+    z-index: 1;
+    width: min(75%, 420px);
+    max-height: 260px;
+    margin-top: 15px;
+    object-fit: contain;
+    transform: rotate(-7deg);
+    filter: drop-shadow(0 14px 9px #29233120);
+}
